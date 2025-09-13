@@ -601,14 +601,42 @@ class FunctionalTest extends WebTestCase
     public function testSerializedNameAction(): void
     {
         $model = $this->getModel('SerializedNameEntity');
-
-        self::assertCount(2, $model->properties);
-
-        $this->assertNotHasProperty('foo', $model);
-        $this->assertHasProperty('notfoo', $model);
-
-        $this->assertNotHasProperty('bar', $model);
-        $this->assertHasProperty('notwhatyouthink', $model);
+        self::assertEquals([
+            'schema' => 'SerializedNameEntity',
+            'required' => ['notfoo', 'some', 'notwhatyouthink'],
+            'properties' => [
+                'notfoo' => [
+                    'type' => 'string',
+                ],
+                'some' => [
+                    'properties' => [
+                        'prop' => [
+                            'type' => 'boolean',
+                            'nullable' => true,
+                        ],
+                        'method' => [
+                            'title' => 'Tests serialized path feature.',
+                            'type' => 'string',
+                        ],
+                        'nested' => [
+                            'properties' => [
+                                'field2' => [
+                                    'title' => 'Tests serialized path feature.',
+                                    'type' => 'string',
+                                ],
+                            ],
+                            'type' => 'object',
+                        ],
+                    ],
+                    'type' => 'object',
+                ],
+                'notwhatyouthink' => [
+                    'title' => 'Tests serialized name feature.',
+                    'type' => 'string',
+                ],
+            ],
+            'type' => 'object',
+        ], json_decode($model->toJson(), true));
     }
 
     public function testCompoundEntityAction(): void
