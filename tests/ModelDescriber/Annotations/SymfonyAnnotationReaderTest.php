@@ -18,6 +18,8 @@ use OpenApi\Context;
 use OpenApi\Generator;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
+use Symfony\Component\Serializer\Attribute\Context as SerializerContext;
+use Symfony\Component\Serializer\Normalizer\AbstractNormalizer;
 use Symfony\Component\Validator\Constraint;
 use Symfony\Component\Validator\Constraints as Assert;
 
@@ -367,10 +369,12 @@ class SymfonyAnnotationReaderTest extends TestCase
         $reader = new SymfonyAnnotationReader(true);
         $reader->setSchema($schema);
 
+        $context = [];
         // no serialization groups passed here
         $reader->updateProperty(
             new \ReflectionProperty($entity, 'property1'),
             $schema->properties[0],
+            $context,
             ['other']
         );
 
@@ -388,10 +392,12 @@ class SymfonyAnnotationReaderTest extends TestCase
         $reader = new SymfonyAnnotationReader(true);
         $reader->setSchema($schema);
 
+        $context = [];
         // no serialization groups passed here
         $reader->updateProperty(
             new \ReflectionProperty($entity, 'property1'),
             $schema->properties[0],
+            $context,
             ['other', Constraint::DEFAULT_GROUP]
         );
 
@@ -406,6 +412,25 @@ class SymfonyAnnotationReaderTest extends TestCase
             #[Assert\Range(min: 1, groups: ['other'])]
             public $property1;
         }];
+    }
+
+    public function testSerializerContextWithNamedArguments(): void
+    {
+        $entity = new class {
+            #[SerializerContext(denormalizationContext: [AbstractNormalizer::IGNORED_ATTRIBUTES => ['status']])]
+            public \DateTimeImmutable $property1;
+        };
+
+        $schema = $this->createObj(OA\Schema::class, []);
+        $schema->merge([$this->createObj(OA\Property::class, ['property' => 'property1'])]);
+
+        $context = [];
+        $symfonyAnnotationReader = new SymfonyAnnotationReader();
+        $symfonyAnnotationReader->setSchema($schema);
+
+        $symfonyAnnotationReader->updateProperty(new \ReflectionProperty($entity, 'property1'), $schema->properties[0], $context);
+
+        self::assertSame(['ignored_attributes' => ['status']], $context['symfony_context']);
     }
 
     /**

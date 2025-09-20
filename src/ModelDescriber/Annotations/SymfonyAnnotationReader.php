@@ -42,9 +42,10 @@ class SymfonyAnnotationReader
      * Update the given property and schema with defined Symfony attributes.
      *
      * @param \ReflectionProperty|\ReflectionMethod $reflection
+     * @param array<string, mixed>                  $context
      * @param string[]|null                         $validationGroups
      */
-    public function updateProperty($reflection, OA\Property $property, ?array $validationGroups = null): void
+    public function updateProperty($reflection, OA\Property $property, array &$context = [], ?array $validationGroups = null): void
     {
         // Handle constraints
         foreach ($this->getConstraintAttributes($property->_context, $reflection, $validationGroups) as $outerAttribute) {
@@ -56,12 +57,14 @@ class SymfonyAnnotationReader
         }
 
         // Handle context
-        $context = $reflection->getAttributes(\Symfony\Component\Serializer\Attribute\Context::class);
-        if (1 === \count($context)) {
-            $contextArgs = $context[0]->getArguments()[0];
-            if ('Y-m-d' === ($contextArgs['datetime_format'] ?? null)) {
-                $property->format = 'date';
-            }
+        $contextAttr = $reflection->getAttributes(\Symfony\Component\Serializer\Attribute\Context::class);
+        if (1 === \count($contextAttr)) {
+            $serializerContext = $contextAttr[0]->newInstance();
+            $context['symfony_context'] = array_merge(
+                $serializerContext->getContext(),
+                $serializerContext->getNormalizationContext(),
+                $serializerContext->getDenormalizationContext(),
+            );
         }
     }
 
