@@ -54,6 +54,20 @@ class AnnotationsReader
      */
     public function getPropertyName($reflection, string $default): string
     {
+        // Check for SerializedName attribute
+        $serializedNameAttributes = $reflection->getAttributes(\Symfony\Component\Serializer\Attribute\SerializedName::class);
+        if (1 === \count($serializedNameAttributes)) {
+            return $serializedNameAttributes[0]->getArguments()[0];
+        }
+
+        // Check for legacy SerializedName annotation (for older versions)
+        if (class_exists(\Symfony\Component\Serializer\Annotation\SerializedName::class)) {
+            $serializedNameAnnotations = $reflection->getAttributes(\Symfony\Component\Serializer\Annotation\SerializedName::class);
+            if (1 === \count($serializedNameAnnotations)) {
+                return $serializedNameAnnotations[0]->getArguments()[0];
+            }
+        }
+
         return $this->openApiAnnotationsReader->getPropertyName($reflection, $default);
     }
 

@@ -133,7 +133,22 @@ class ObjectModelDescriber implements ModelDescriberInterface, ModelRegistryAwar
                 $serializedName = $annotationsReader->getPropertyName($reflection, $serializedName);
             }
 
-            $property = Util::getProperty($schema, $serializedName);
+            // Handle SerializedPath attribute to create nested structure
+            $serializedPath = null;
+            foreach ($reflections as $reflection) {
+                $serializedPathAttributes = $reflection->getAttributes(\Symfony\Component\Serializer\Attribute\SerializedPath::class);
+                if (1 === \count($serializedPathAttributes)) {
+                    $serializedPath = $serializedPathAttributes[0]->getArguments()[0];
+                    break;
+                }
+            }
+
+            if ($serializedPath) {
+                // Parse path like [some][field] and create nested structure
+                $property = $this->createNestedPropertyFromPath($schema, $serializedPath);
+            } else {
+                $property = Util::getProperty($schema, $serializedName);
+            }
 
             // Interpret additional options
             $groups = $model->getGroups();
@@ -246,5 +261,47 @@ class ObjectModelDescriber implements ModelDescriberInterface, ModelRegistryAwar
     {
         return $model->getTypeInfo() instanceof ObjectType
             && (class_exists($model->getTypeInfo()->getClassName()) || interface_exists($model->getTypeInfo()->getClassName()));
+    }
+
+    /**
+     * Create nested property structure from SerializedPath like [some][field].
+     */
+    private function createNestedPropertyFromPath(OA\Schema $schema, string $path): OA\Property
+    {
+        // Parse path segments like [some][field]
+        preg_match_all('/\[([^\]]+)\]/', $path, $matches);
+        $segments = $matches[1];
+
+        if (empty($segments)) {
+            // Fallback to simple property if path parsing fails
+            return Util::getProperty($schema, 'unknown');
+        }
+
+        // Get or create the root property
+        $rootProperty = Util::getProperty($schema, $segments[0]);
+        $rootProperty->type = 'object';
+
+        // Navigate through the nested segments to find the final property
+        $currentProperty = $rootProperty;
+        for ($i = 1; $i < \count($segments); ++$i) {
+            $segmentName = $segments[$i];
+
+            // Ensure current property has properties array
+            if (Generator::UNDEFINED === $currentProperty->properties) {
+                $currentProperty->properties = [];
+            }
+
+            // Get or create the nested property
+            $nestedProperty = Util::getProperty($currentProperty, $segmentName);
+
+            // If this isn't the last segment, make it an object
+            if ($i < \count($segments) - 1) {
+                $nestedProperty->type = 'object';
+            }
+
+            $currentProperty = $nestedProperty;
+        }
+
+        return $currentProperty;
     }
 }

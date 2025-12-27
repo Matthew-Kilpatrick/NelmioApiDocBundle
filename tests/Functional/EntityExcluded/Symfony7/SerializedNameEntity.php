@@ -12,6 +12,7 @@
 namespace Nelmio\ApiDocBundle\Tests\Functional\EntityExcluded\Symfony7;
 
 use Symfony\Component\Serializer\Annotation\SerializedName;
+use Symfony\Component\Serializer\Attribute\SerializedPath;
 
 /**
  * @author Guilhem N. <guilhem.niot@gmail.com>
@@ -24,11 +25,30 @@ class SerializedNameEntity
     #[SerializedName('notfoo')]
     public $foo;
 
+    #[SerializedPath('[some][prop]')]
+    public ?bool $nestedProp;
+
     /**
      * Tests serialized name feature.
      */
     #[SerializedName('notwhatyouthink')]
     public function setBar(string $bar)
+    {
+    }
+
+    /**
+     * Tests serialized path feature.
+     */
+    #[SerializedPath('[some][method]')]
+    public function setPath(string $x)
+    {
+    }
+
+    /**
+     * Tests serialized path feature.
+     */
+    #[SerializedPath('[some][nested][field2]')]
+    public function setPath2(string $x)
     {
     }
 }
